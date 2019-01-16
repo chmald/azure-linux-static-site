@@ -1,4 +1,4 @@
-FROM nginx:stable
+FROM httpd:2.4
 LABEL Chris Maldonado <chmald@microsoft.com>
 
 # ========
@@ -6,16 +6,16 @@ LABEL Chris Maldonado <chmald@microsoft.com>
 # ========
 # ssh
 ENV SSH_PASSWD "root:Docker!"
-#nginx
-ENV NGINX_VERSION 1.14.0
-ENV NGINX_LOG_DIR "/home/LogFiles/nginx"
+#apache httpd
+ENV HTTPD_LOG_DIR "/home/LogFiles/httpd"
 #Web Site Home
 ENV HOME_SITE "/home/site/wwwroot"
 # supervisor
 ENV SUPERVISOR_LOG_DIR "/home/LogFiles/supervisor"
 
 COPY init_container.sh /usr/local/bin/
-COPY index.html /home/site/wwwroot/
+COPY index.html /usr/local/apache2/htdocs/
+COPY httpd.conf /usr/local/apache2/conf/httpd.conf
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends dialog \
@@ -38,24 +38,20 @@ COPY sshd_config /etc/ssh/
 # =========
 # Configure
 # =========
-RUN set -ex\    		
+RUN set -ex\
 	##
-	&& rm -rf /var/log/nginx \
-	&& ln -s $NGINX_LOG_DIR /var/log/nginx \
+	&& rm -rf /var/log/httpd \
+	&& ln -s $HTTPD_LOG_DIR /var/log/httpd \
+	##
+	&& rm -rf /var/log/supervisor \
+	&& ln -s $SUPERVISOR_LOG_DIR /var/log/supervisor \
+	##
+	&& ln -s $HOME_SITE /usr/local/apache2/htdocs \
 	##
 	&& rm -rf /var/log/supervisor \
 	&& ln -s $SUPERVISOR_LOG_DIR /var/log/supervisor 
 # ssh
 COPY sshd_config /etc/ssh/ 
-# nginx
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY default.conf /etc/nginx/conf.d/default.conf
-COPY spec-settings.conf /etc/nginx/conf.d/spec-settings.conf
-# log rotater
-COPY logrotate.conf /etc/logrotate.conf
-RUN chmod 444 /etc/logrotate.conf
-COPY logrotate.d/. /etc/logrotate.d/
-RUN chmod -R 444 /etc/logrotate.d
 # supervisor
 COPY supervisord.conf /etc/
 
